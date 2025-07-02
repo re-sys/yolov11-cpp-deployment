@@ -30,6 +30,7 @@ yolocpp/
 │       ├── YOLO11.hpp     # YOLO11类头文件
 │       ├── YOLO11.cpp     # YOLO11类实现
 │       └── tools/
+│           ├── Config.hpp # 配置常量定义
 │           └── Config.cpp # 配置工具
 ├── chpt/
 │   └── best.pt           # 训练好的PyTorch模型
@@ -46,10 +47,6 @@ yolocpp/
 sudo apt update
 sudo apt install build-essential cmake pkg-config
 sudo apt install libopencv-dev
-
-# CentOS/RHEL
-sudo yum groupinstall "Development Tools"
-sudo yum install cmake pkg-config opencv-devel
 ```
 
 ### 2. ONNX Runtime 安装
@@ -183,6 +180,244 @@ for (int j = 0; j < num_classes; j++) {
     float class_score = output_data[(5 + j) * num_anchors + i];
     // 处理多类别逻辑
 }
+```
+
+## 📋 ONNX导出参数变化后的源码修改指南
+
+根据ultralytics最新官方文档，ONNX导出时可以使用多种参数来优化模型。当这些参数改变时，需要相应修改C++源码以确保兼容性。
+
+### 🔧 导出参数详解
+
+#### 1. 图像尺寸参数 (`imgsz`)
+
+**导出时的设置：**
+```python
+# 正方形输入
+model.export(format='onnx', imgsz=640)          # 640x640
+model.export(format='onnx', imgsz=832)          # 832x832
+
+# 矩形输入  
+model.export(format='onnx', imgsz=(480, 640))   # 高度480, 宽度640
+model.export(format='onnx', imgsz=[384, 672])   # 高度384, 宽度672
+```
+
+**需要修改的源码位置：**
+
+1. **修改 `src/ia/tools/Config.hpp`:**
+```cpp
+// 根据你的导出设置修改这些值
+#define DEFAULT_INPUT_WIDTH 640   // 改为你的宽度
+#define DEFAULT_INPUT_HEIGHT 640  // 改为你的高度
+
+// 例如，如果导出时使用 imgsz=(480, 640)
+#define DEFAULT_INPUT_WIDTH 640
+#define DEFAULT_INPUT_HEIGHT 480
+```
+
+2. **修改 `src/ia/YOLO11.cpp` 中的锚点数量计算:**
+```cpp
+// 在postprocess函数中，锚点数量需要根据输入尺寸调整
+// 标准公式: num_anchors = (width/8)*(height/8) + (width/16)*(height/16) + (width/32)*(height/32)
+
+// 对于640x640: 8400 = 80*80 + 40*40 + 20*20
+// 对于832x832: 14756 = 104*104 + 52*52 + 26*26  
+// 对于480x640: 6300 = 60*80 + 30*40 + 15*20
+
+int num_detections = 8400;  // 根据你的输入尺寸修改这个值
+
+// 计算公式示例：
+// int num_detections = (input_width_/8)*(input_height_/8) + 
+//                      (input_width_/16)*(input_height_/16) + 
+//                      (input_width_/32)*(input_height_/32);
+```
+
+#### 2. 批处理大小参数 (`batch`)
+
+**导出时的设置：**
+```python
+model.export(format='onnx', batch=1)   # 默认值
+model.export(format='onnx', batch=4)   # 批处理4张图片
+```
+
+**需要修改的源码位置：**
+
+如果导出时设置了 `batch > 1`，需要修改推理代码：
+
+```cpp
+// 在YOLO11.cpp的detect函数中
+std::vector<int64_t> input_shape = {batch_size, 3, input_height_, input_width_};
+
+// 输出也需要相应调整
+// 输出形状会变为 [batch_size, elements_per_detection, num_anchors]
+```
+
+#### 3. 动态输入参数 (`dynamic`)
+
+**导出时的设置：**
+```python
+model.export(format='onnx', dynamic=True)   # 支持动态输入尺寸
+```
+
+**需要修改的源码位置：**
+
+如果启用了动态输入，推理时可以处理不同尺寸的图片，但需要修改预处理逻辑：
+
+```cpp
+// 在YOLO11.cpp中添加动态尺寸支持
+cv::Mat YOLO11::preprocess(const cv::Mat& image, int target_width, int target_height) {
+    cv::Mat resized, normalized;
+    
+    // 动态调整目标尺寸
+    cv::resize(image, resized, cv::Size(target_width, target_height));
+    cv::cvtColor(resized, resized, cv::COLOR_BGR2RGB);
+    resized.convertTo(normalized, CV_32F, 1.0 / 255.0);
+    
+    return normalized;
+}
+```
+
+#### 4. 半精度参数 (`half`)
+
+**导出时的设置：**
+```python
+model.export(format='onnx', half=True)   # 启用FP16
+```
+
+**需要修改的源码位置：**
+
+启用FP16后，模型权重精度会降低但速度更快。通常不需要修改C++代码，但如果遇到精度问题可以调整：
+
+```cpp
+// 在YOLO11.cpp的initialize函数中
+if (use_half_precision) {
+    session_options_->SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+    // 可能需要调整置信度阈值
+    // 因为FP16可能会略微影响精度
+}
+```
+
+#### 5. 简化参数 (`simplify`)
+
+**导出时的设置：**
+```python
+model.export(format='onnx', simplify=True)   # 默认值，简化模型图
+model.export(format='onnx', simplify=False)  # 保持原始模型结构
+```
+
+通常不需要修改C++代码，但如果 `simplify=False` 导致推理失败，可能需要调整Session选项。
+
+#### 6. NMS参数 (`nms`)
+
+**导出时的设置：**
+```python
+model.export(format='onnx', nms=True)   # 在模型中包含NMS
+```
+
+**需要修改的源码位置：**
+
+如果导出时包含了NMS，输出格式会发生变化，需要重写postprocess函数：
+
+```cpp
+// 当nms=True时，模型输出已经是经过NMS处理的最终结果
+// 输出格式通常为: [batch, num_detections, 6] 
+// 其中6个值为: [x1, y1, x2, y2, confidence, class_id]
+
+std::vector<Detection> YOLO11::postprocess_with_nms(const std::vector<float>& output, 
+                                                    int original_width, int original_height,
+                                                    float conf_threshold) {
+    std::vector<Detection> detections;
+    
+    // 模型已经进行了NMS，直接解析结果
+    int num_detections = output.size() / 6;  // 每个检测有6个值
+    
+    for (int i = 0; i < num_detections; ++i) {
+        float x1 = output[i * 6 + 0];
+        float y1 = output[i * 6 + 1]; 
+        float x2 = output[i * 6 + 2];
+        float y2 = output[i * 6 + 3];
+        float confidence = output[i * 6 + 4];
+        int class_id = static_cast<int>(output[i * 6 + 5]);
+        
+        if (confidence >= conf_threshold) {
+            Detection det;
+            det.bbox = cv::Rect(x1, y1, x2-x1, y2-y1);
+            det.confidence = confidence;
+            det.class_id = class_id;
+            det.class_name = (class_id < class_names_.size()) ? class_names_[class_id] : "Unknown";
+            detections.push_back(det);
+        }
+    }
+    
+    return detections;
+}
+```
+
+#### 7. OPSET版本参数 (`opset`)
+
+**导出时的设置：**
+```python
+model.export(format='onnx', opset=11)   # ONNX opset版本
+model.export(format='onnx', opset=12)   # 更新的opset版本
+```
+
+不同的OPSET版本可能会影响某些操作的行为，但通常不需要修改C++代码。如果遇到兼容性问题，可以尝试不同的OPSET版本。
+
+### 🔍 模型输出格式识别
+
+使用模型分析工具确定输出格式：
+
+```bash
+./model_info best.onnx
+```
+
+常见的输出格式：
+
+| 导出参数 | 输出形状 | 说明 |
+|---------|---------|------|
+| 默认单类别 | `[1, 5, 8400]` | 无类别预测，只有目标置信度 |
+| 多类别(80类) | `[1, 84, 8400]` | 4个坐标 + 80个类别概率 |
+| 启用NMS | `[1, 100, 6]` | 最多100个检测，每个6个值 |
+| 分割模型 | `[1, 116, 8400]`, `[1, 32, 160, 160]` | 两个输出：检测+mask原型 |
+
+### 📝 快速适配检查清单
+
+当你更改ONNX导出参数后，按以下清单检查：
+
+1. **✅ 检查输入尺寸**
+   - [ ] 更新 `Config.hpp` 中的 `DEFAULT_INPUT_WIDTH/HEIGHT`
+   - [ ] 重新计算锚点数量
+
+2. **✅ 检查输出格式**  
+   - [ ] 运行 `./model_info` 分析新模型
+   - [ ] 根据输出形状修改 `postprocess` 函数
+
+3. **✅ 检查类别数量**
+   - [ ] 更新 `classes.txt` 文件
+   - [ ] 修改解析逻辑中的类别数量
+
+4. **✅ 测试推理**
+   - [ ] 编译项目：`make -j$(nproc)`
+   - [ ] 测试图片推理：`./test_image sample.jpg`
+   - [ ] 检查检测结果是否正确
+
+### 🛠️ 常见问题解决
+
+1. **输出张量形状不匹配**
+```bash
+# 错误信息: "Expected output shape [1, 5, 8400] but got [1, 84, 8400]"
+# 解决方案: 模型是多类别的，需要修改postprocess函数
+```
+
+2. **检测框坐标不正确**
+```bash
+# 可能原因: 输入尺寸与导出时不匹配
+# 解决方案: 检查Config.hpp中的尺寸设置
+```
+
+3. **推理速度慢**
+```bash
+# 建议: 尝试不同的导出参数组合
+model.export(format='onnx', imgsz=640, half=True, simplify=True, opset=11)
 ```
 
 ## 🏗️ 编译和运行
