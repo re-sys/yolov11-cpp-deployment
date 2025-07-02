@@ -1,0 +1,68 @@
+# Build directories
+build/
+cmake-build-*/
+
+# Compiled executables
+model_info
+test_image
+yolo_detector
+
+# Model files (generated from .pt)
+*.onnx
+*.engine
+*.trt
+
+# Temporary and cache files
+*.tmp
+*.temp
+*.log
+.cache/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Output files
+output/
+results/
+*.mp4
+*.avi
+*.mov
+*.jpg
+*.png
+*.jpeg
+!sample_image.jpg
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+
+# Object files
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+
+# Debug files
+*.dSYM/
+*.pdb
