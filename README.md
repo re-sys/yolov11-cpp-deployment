@@ -21,7 +21,9 @@
 <!-- ![YOLOv8 分割推理](resource/test_gpu_seg_full.gif) -->
 <video src="https://github.com/user-attachments/assets/f5395be5-7bb4-4b15-980f-33d73ec8d513" controls width="480"></video>
 *YOLOv8分割模型推理效果（全视频，GIF动态展示，约95MB）*
+
 https://github.com/user-attachments/assets/f5395be5-7bb4-4b15-980f-33d73ec8d513
+
 ## 📊 性能对比
 
 | 平台 | FPS | 推理时间 | 总时间(363帧) | 性能提升 |
