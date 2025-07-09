@@ -5,7 +5,7 @@ int main() {
     try {
         Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "ModelInfo");
         Ort::SessionOptions session_options;
-        Ort::Session session(env, "./best.onnx", session_options);
+        Ort::Session session(env, "./best_fixed.onnx", session_options);
         
         std::cout << "=== Model Information ===" << std::endl;
         

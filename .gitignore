@@ -40,6 +40,20 @@ results/
 *.jpeg
 !sample_image.jpg
 
+# Keep resource videos
+!resource/*.mp4
+!resource/*.avi
+!resource/*.mov
+
+# Exclude compare directory (contains embedded git repo)
+compare/
+
+# Exclude zip files
+*.zip
+
+# Exclude html files
+*.html
+
 # Python cache
 __pycache__/
 *.pyc

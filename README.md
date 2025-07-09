@@ -10,6 +10,21 @@
 - **多输入支持**: 支持图片、视频文件和摄像头实时推理
 - **可视化输出**: 实时显示检测结果和性能指标
 - **内存优化**: 高效的内存管理和GPU资源利用
+- **分割支持**: 支持YOLO分割模型，提供像素级分割结果
+
+## 🎥 演示视频
+
+### YOLOv11 分割推理演示
+
+https://github.com/your-username/yolocpp/assets/your-user-id/resource/test_yolov11_seg_gpu.mp4
+
+*使用YOLOv11分割模型进行实时视频分割推理，GPU加速下达到稳定的推理性能*
+
+### YOLOv8 分割推理演示
+
+https://github.com/your-username/yolocpp/assets/your-user-id/resource/test_gpu_seg.mp4
+
+*使用YOLOv8分割模型进行视频分割推理，展示分割效果和性能*
 
 ## 📊 性能对比
 
@@ -441,26 +456,41 @@ make -j$(nproc)
 #### 基本使用
 ```bash
 # 图片推理
-./yolo_detector --model ../best.onnx --input image.jpg --output result.jpg
+./yolov11_detector --model ../best.onnx --input image.jpg --output result.jpg
 
 # 视频推理
-./yolo_detector --model ../best.onnx --input video.mp4 --output result.mp4
+./yolov11_detector --model ../best.onnx --input video.mp4 --output result.mp4
 
 # 摄像头推理
-./yolo_detector --model ../best.onnx --camera 0
+./yolov11_detector --model ../best.onnx --input 0
+```
+
+#### 分割模式使用
+```bash
+# 分割模式 - 图片推理
+./yolov11_detector --model ../chpt/best.onnx --input image.jpg --seg
+
+# 分割模式 - 视频推理
+./yolov11_detector --model ../chpt/best.onnx --input video.mp4 --output result.mp4 --seg
+
+# 分割模式 - GPU加速
+./yolov11_detector --model ../chpt/best.onnx --input video.mp4 --output result.mp4 --seg --gpu
+
+# 分割模式 - 自定义阈值
+./yolov11_detector --model ../chpt/best.onnx --input video.mp4 --seg --gpu --conf-threshold 0.3 --mask-threshold 0.5
 ```
 
 #### 高级参数
 ```bash
-./yolo_detector \
+./yolov11_detector \
     --model ../best.onnx \
     --input video.mp4 \
     --output result.mp4 \
     --gpu \                    # 启用GPU加速
     --conf-threshold 0.5 \     # 置信度阈值
     --iou-threshold 0.4 \      # NMS IoU阈值
-    --debug \                  # 显示调试信息
-    --timing                   # 显示性能指标
+    --seg \                    # 启用分割模式
+    --mask-threshold 0.5       # 分割掩码阈值
 ```
 
 ## ⚙️ GPU加速配置
