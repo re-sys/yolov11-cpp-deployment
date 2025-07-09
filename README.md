@@ -23,6 +23,7 @@ https://github.com/your-username/yolocpp/assets/your-user-id/resource/test_yolov
 ### YOLOv8 分割推理演示
 
 ![YOLOv8 分割推理](resource/test_gpu_seg.gif)
+
 *YOLOv8分割模型推理效果（前8秒，GIF动态展示）*
 
 ## 📊 性能对比
