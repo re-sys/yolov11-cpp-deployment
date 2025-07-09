@@ -14,17 +14,13 @@
 
 ## 🎥 演示视频
 
+
+
 ### YOLOv11 分割推理演示
 
-https://github.com/your-username/yolocpp/assets/your-user-id/resource/test_yolov11_seg_gpu.mp4
-
-*使用YOLOv11分割模型进行实时视频分割推理，GPU加速下达到稳定的推理性能*
-
-### YOLOv8 分割推理演示
-
-![YOLOv8 分割推理](resource/test_gpu_seg.gif)
-
-*YOLOv8分割模型推理效果（前8秒，GIF动态展示）*
+![YOLOv8 分割推理](resource/test_gpu_seg_full.gif)
+<video src="https://github.com/user-attachments/assets/f5395be5-7bb4-4b15-980f-33d73ec8d513" controls width="480"></video>
+*YOLOv8分割模型推理效果（全视频，GIF动态展示，约95MB）*
 
 ## 📊 性能对比
 
